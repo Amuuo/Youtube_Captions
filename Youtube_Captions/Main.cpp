@@ -191,14 +191,16 @@ void cleanupFiles(vector<Video>& videoVector) {
   string   systemCall;
 	string   fileContents;
 	ofstream outStream;
+  int      fileNumber{0};
 
 	for (Video& video : videoVector) {
-		video.shellFile = "cleanFile" + to_string(i) + ".sh";
+		video.shellFile = "cleanFile" + to_string(fileNumber) + ".sh";
 		outStream.open(video.shellFile);
     string tmp{"#!\\bin\\bash\n\n" + sed + "\"" + video.filename + "\""};
 		outStream << tmp;
 		outStream.close();
 		system((const char*)video.shellFile.c_str());
+    ++fileNumber;
 	}
 }
 
@@ -262,8 +264,7 @@ void getTime(vector<string>& keys, vector<Video>& vids) {
 		++i;
 	}
 }
-//////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////
+
 void getTimestampURLs(Video& video, int line) {
 
   short hr{0};
@@ -310,8 +311,7 @@ void getTimestampURLs(Video& video, int line) {
 
 	return;
 }
-//////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////
+
 void launchUrls(vector<Video>& videos, vector<string> searchWord) {
 	
   for (Video& video : videos) {
@@ -443,8 +443,7 @@ void redrawScreen(string screenString) {
 	}
 	return;
 }
-//////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////
+
 void saveTimestampURLtoClipboard(set<string>& urls) {
 	
   string   saveToClipCmdString{"cat urls.txt | clip"};

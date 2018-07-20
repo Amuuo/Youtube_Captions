@@ -16,12 +16,12 @@ struct Video
         string f, 
         string u) : title{t}, url{u}, filename{f} {}
 	
-	string shellFile, title, filename, url;
+  string shellFile, title, filename, url;
 	
-	unordered_map<string, short> wordCountMap;
-	map<string, bool>            commonWords;
-	vector<string>               captionLines;
-  set<string>                  timestampURLs;
+  unordered_map<string, short> wordCountMap{};
+  map<string, bool>            commonWords{};
+  vector<string>               captionLines{};
+  set<string>                  timestampURLs{};
 
   void import_iWords();
   void countWords();
