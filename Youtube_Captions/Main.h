@@ -57,7 +57,11 @@ using namespace std;
 
 #endif
 
-string sed{"sed -i 's/\\(<\\/c>\\)/ /g;s/\\(<\\)/ /g;s/\\(-->\\)/ /g;s/\\(align.*%\\)/ /g;s/\\(c\\..*>\\)/ /g;s/\\(c>\\)/ /g;s/ /\\n/g;s/\\n/ /g;s/0.*>/ /g' "};
+string sed{"sed -i 's/\\(<\\/c>\\)/ /g;s/\\(<\\)/"
+           " /g;s/\\(-->\\)/ /g;s/\\(align.*%\\)/"
+           " /g;s/\\(c\\..*>\\)/ /g;s/\\(c>\\)/"
+           " /g;s/ /\\n/g;s/\\n/ /g;s/0.*>/ /g' "};
+
 vector<string> cleanFiles{};
 int            mention{2};
 char           selection{'v'};

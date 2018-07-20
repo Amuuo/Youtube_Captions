@@ -68,7 +68,7 @@ int main(int argc, char** argv) {
 			redrawScreen(screenText);
 			
       for (Video& v : videos) {
-				v.clips.erase(v.clips.begin(), v.clips.end());
+				v.timestampURLs.erase(v.timestampURLs.begin(), v.timestampURLs.end());
       }
 			
       printf("\n\tWhat word do you want to search?: "); 
@@ -100,25 +100,25 @@ int main(int argc, char** argv) {
 		videos[0].countWords();
 
 		auto store = [](unordered_map<string, short>& map) {
-			vector<pair<string, short>> vec;
-			for(auto& s : map) {
-				vec.push_back(s);
+			vector<pair<string, short>> tmpVector;
+			for(auto& word : map) {
+				tmpVector.push_back(word);
 			}
-			return vec;
+			return tmpVector;
 		};
 
-		auto cmp = [](pair<string, short> const & tmp1, 
-                  pair<string, short> const & tmp2) {
+		auto wordCountCompare = [](pair<string, short> const & tmp1, 
+                               pair<string, short> const & tmp2) {
 			return tmp1.second > tmp2.second;
 		};
 
 		vector<pair<string, short>> vec = store(videos[0].wordCountMap);
-		sort(vec.begin(), vec.end(), cmp);		
+		sort(vec.begin(), vec.end(), wordCountCompare);		
 		ofstream out;
-		string fName = "words_";
-		fName += videoURL + ".txt";
+		string wordsFilename = "words_";
+		wordsFilename += videoURL + ".txt";
 		char f[30];
-		out.open(fName);						
+		out.open(wordsFilename);						
 		
     for(auto& s : vec) {
 			sprintf(f, "\n%-20s: %d", s.first.c_str(), s.second);
@@ -134,210 +134,208 @@ int main(int argc, char** argv) {
 	system("PAUSE");
 	return 0;
 }
-//////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////
+
 void getFileNames(vector<Video>& vids, string firstUrl) {
   
-	ifstream  inFile;
-	ifstream  urlFile;
-	string    ttmp;
-	string    utmp;
-	string    tmp;
-	string    cmd;
-
+	ifstream  filenameFile;	
+	string    filename;	
+	string    currentLine;
+	string    youtubeDL_cmd;
 
 	//load in .vtt file titles
-	if (selection == 'v' || selection == 'V') {
-		cmd = "youtube-dl --get-filename \"" + firstUrl + "\" > filenames.txt";
+	if (tolower(selection) == 'v') {
+		youtubeDL_cmd = "youtube-dl --get-filename \"" + 
+      firstUrl + "\" > filenames.txt";
   }
 	
-	system((const char*)cmd.c_str());	
+	system((const char*)youtubeDL_cmd.c_str());	
+	
+  filenameFile.open("filenames.txt");	
 
-	inFile.open("filenames.txt");	
-
-	//INITIALIZE VIDEO CLASSES
-	int itmp = 0;
-
+	//INITIALIZE VIDEO CLASSES	
 	do {
-		getline(inFile, tmp);		
-		istringstream iss(tmp);
-		char c;
-		int i = 0;
-		int dotSpot;
-		while (iss) {
-			iss.get(c);
-			if (c == '.')
-				dotSpot = i;
-			++i;
+		getline(filenameFile, currentLine);		
+		istringstream lineStream(currentLine);
+		
+    char currentChar;
+    int  positionCounter{0};
+		int  dotPosition;
+		
+    while (lineStream) {
+			lineStream.get(currentChar);
+			if (currentChar == '.') {
+				dotPosition = positionCounter;
+      }
+			++positionCounter;
 		}
 		
-		if (tmp[dotSpot + 1] != 'e' && tmp[dotSpot + 2] != 'n') {
-			tmp.erase(tmp.begin() + dotSpot, tmp.end());
+		if (currentLine[dotPosition + 1] != 'e' && 
+        currentLine[dotPosition + 2] != 'n') {
+			currentLine.erase(currentLine.begin() + dotPosition, 
+                        currentLine.end());
     }
 
-		ttmp = tmp;
-		tmp += ".en.vtt";
-		cout << "tmp: " << tmp;
-		Video v(ttmp, tmp, utmp);
+		filename = currentLine;
+		currentLine += ".en.vtt";
+		printf("%s %s","tmp:", currentLine);
+		Video v(filename, currentLine, filename);
 		vids.push_back(v);
-	} while (inFile.peek() != EOF);
+	} while (filenameFile.peek() != EOF);
 
-	inFile.close();
+	filenameFile.close();
 }
 
 // clean up original file formatting
-//////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////
-void cleanupFiles(vector<Video>& vids) {
+void cleanupFiles(vector<Video>& videoVector) {
 	
   string   systemCall;
-	string   tmp;
-	ofstream shell;
-	int      i = 1;
+	string   fileContents;
+	ofstream outStream;
 
-	for (Video& vid : vids) {
-		vid.shellFile = "cleanFile" + to_string(i) + ".sh";
-		shell.open(vid.shellFile);
-		string tmp = "#!\\bin\\bash\n\n" + sed + "\"" + vid.filename + "\"";
-		shell << tmp;
-		shell.close();
-		system((const char*)vid.shellFile.c_str());
-
-		++i;
+	for (Video& video : videoVector) {
+		video.shellFile = "cleanFile" + to_string(i) + ".sh";
+		outStream.open(video.shellFile);
+    string tmp{"#!\\bin\\bash\n\n" + sed + "\"" + video.filename + "\""};
+		outStream << tmp;
+		outStream.close();
+		system((const char*)video.shellFile.c_str());
 	}
-	return;
 }
-//////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////
+
 void getTime(vector<string>& keys, vector<Video>& vids) {
 	
-  vector<string> lines;
-	ifstream       inFile;
-	string         temp;
-	string         s;
+  vector<string> captionLines;
+	ifstream       captionFile;
+	string         currentLine;	
 	string         currentWord;
 	
-	if (firstWordSearch == false) {
-		s = '0';
-		inFile.open(vids[0].filename);
-		if (inFile.fail()) {
-			cout << "\n\tCouldn't open file in getTime function";
+	if (firstWordSearch == false) {		
+		captionFile.open(vids[0].filename);
+		if (captionFile.fail()) {
+			printf("\n\tCouldn't open file in getTime function");
 			system("PAUSE");
 			exit(1);
 		}
-		while (inFile.good()) {
-			getline(inFile, temp);
-			while (inFile.peek() != EOF) {
-				transform(temp.begin(), temp.end(), temp.begin(), ::tolower);
-				vids[0].lines.push_back(temp);
-				getline(inFile, temp);
+		while (captionFile.good()) {
+			getline(captionFile, currentLine);
+			while (captionFile.peek() != EOF) {
+				transform(currentLine.begin(), 
+                  currentLine.end(), 
+                  currentLine.begin(), 
+                  ::tolower);
+				vids[0].captionLines.push_back(currentLine);
+				getline(captionFile, currentLine);
 			}
-		} inFile.close();
+		} captionFile.close();
 	}
 	//iterate through lines between '\n's
 	short i = 0;
-	for (string& line : vids[0].lines) {
+	for (string& line : vids[0].captionLines) {
 		//iterate through keywords
 		//parse look lines look for keywords
-		istringstream iss(line);
+		istringstream lineStream(line);
 
-		while (iss) {
-			iss >> currentWord;
+		while (lineStream) {
+			lineStream >> currentWord;
 
 			if (currentWord == keys[0]) {
 				
         try {
-					if (isdigit(vids[0].lines[i - 3][0])){
-						getClips(vids[0], i - 3);
+					if (isdigit(vids[0].captionLines[i - 3][0])){
+						getTimestampURLs(vids[0], i - 3);
           }
 				} catch (exception& e) { continue; }
 
 				try {
-					if (isdigit(vids[0].lines[i - 2][0])){
-						getClips(vids[0], i - 2);
+					if (isdigit(vids[0].captionLines[i - 2][0])){
+						getTimestampURLs(vids[0], i - 2);
           }
 				} catch (exception& e) { continue; }
 
 				try {
-					if (isdigit(vids[0].lines[i - 1][0])){
-						getClips(vids[0], i - 1);
+					if (isdigit(vids[0].captionLines[i - 1][0])){
+						getTimestampURLs(vids[0], i - 1);
           }
 				} catch (exception& e) { continue; }
 			}
 		}
 		++i;
 	}
-
-	return;
 }
 //////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////
-void getTimestampURLs(Video& vid, int line) {
+void getTimestampURLs(Video& video, int line) {
 
-	short hr = 0;
-	short min = 0;
-	short sec = 0;
+  short hr{0};
+  short min{0};
+  short sec{0};
 
 	//calculate timestamp
 	try
 	{
-		if (vid.lines[line][0] != '0') {
-			hr += atoi(&vid.lines[line][0]);
+		if (video.captionLines[line][0] != '0') {
+			hr += atoi(&video.captionLines[line][0]);
     }
-		if (vid.lines[line][0] == '0' && vid.lines[line][1] != '0') {
-			hr += atoi(&vid.lines[line][1]);
+		if (video.captionLines[line][0] == '0' && 
+        video.captionLines[line][1] != '0') {
+			hr += atoi(&video.captionLines[line][1]);
     }
-		if (vid.lines[line][3] != '0') {
-			min += atoi(&vid.lines[line][3]);
+		if (video.captionLines[line][3] != '0') {
+			min += atoi(&video.captionLines[line][3]);
     }
-		if (vid.lines[line][3] == '0' && vid.lines[line][4] != '0') {
-			min += atoi(&vid.lines[line][4]);
+		if (video.captionLines[line][3] == '0' && 
+        video.captionLines[line][4] != '0') {
+			min += atoi(&video.captionLines[line][4]);
     }
-		if (vid.lines[line][6] != '0') {
-			sec += atoi(&vid.lines[line][6]);
+		if (video.captionLines[line][6] != '0') {
+			sec += atoi(&video.captionLines[line][6]);
     }
-		if (vid.lines[line][6] == '0' && vid.lines[line][7] != '0') {
-			sec += atoi(&vid.lines[line][7]);
+		if (video.captionLines[line][6] == '0' && 
+        video.captionLines[line][7] != '0') {			
+      sec += atoi(&video.captionLines[line][7]);
     }
 	}
 	catch (exception& e) {}	
-
+  
 	if ((sec - mention) < 0) {
 		--min;
 		sec = 60 + (sec - mention);
 	}
-	string name = vid.url + "&feature=youtu.be&t=" + to_string(hr) + 'h'
-		+ to_string(min) + 'm' + to_string(sec - mention) + 's';
-	vid.clips.insert(name);
+	string name{video.url + "&feature=youtu.be&t=" + 
+              to_string(hr)  + 'h' + 
+              to_string(min) + 'm' + 
+              to_string(sec - mention) + 's'};
+
+	video.timestampURLs.insert(name);
 
 	return;
 }
 //////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////
-void launchUrls(vector<Video>& vids, vector<string> key) {
+void launchUrls(vector<Video>& videos, vector<string> searchWord) {
 	
-  for (Video& vid : vids) {
-		if (vid.clips.size() == 0) {
-			cout << "\n\n\tCouldn't find any mentions of "
-				<< key[0] << " in this video...";
+  for (Video& video : videos) {
+		if (video.timestampURLs.size() == 0) {
+			printf("%s %s %s", "\n\n\tCouldn't find any mentions of",
+                         searchWord[0],
+                         " in this video...");
 			return;
 		}
 		
-    string newFile;
-		short  switc = 1;
-		short  i = 1;
-		char   response = 'q';
+    string openURLsysCmd{};
+    short  statusDisplay{1};
+    short  i{1};
+    char   response{'q'};
 		
-    cout << "\n\n";
-		screenText += "\t\"" + key[0] + "\" is mentioned: "
-			+ to_string(vid.clips.size()) + " times.";
+    printf("\n\n");
+		screenText += "\t\"" + searchWord[0] + "\" is mentioned: "
+			+ to_string(video.timestampURLs.size()) + " times.";
 		if (firstWordSearch == true) screenText += "\n";
 		redrawScreen(screenText);
-		cout << "\n\n\tPress ENTER to launch first video...";
+		printf("\n\n\tPress ENTER to launch first video...");
 		_getch();
 
-		if (firstWordSearch == false)
-		{
+		if (firstWordSearch == false) {
 			screenText += "\n\n\t    'S' -- skip"
 				"\n\t    'C' -- cancel"
 				"\n\t    'A' -- save all to clipboard"
@@ -345,102 +343,101 @@ void launchUrls(vector<Video>& vids, vector<string> key) {
 		}
 		redrawScreen(screenText);
 
-		for (string s : vid.clips) {
+		for (string s : video.timestampURLs) {
 			if (i > 1) {
         response = _getch();
+        tolower(response);
       }
-			if (response == 'a' || response == 'A') {
-				saveTimestampURLtoClipboard(vid.clips);
+			if (response == 'a') {
+				saveTimestampURLtoClipboard(video.timestampURLs);
 				screenText += "\n\tURL List saved to clipboard";
 				redrawScreen(screenText);
 				response = _getch();
+        tolower(response);
 			}
 
-			if (response == 's' || response == 'S') {
-				switc = 0;
-      }
-			if (response == 'c' || response == 'C') {
-				return;
-      }
-			if (response == 'a' || response == 'A') {
-				continue;
-      }
+      if(response == 's') { statusDisplay = 0; }
+			if(response == 'c') { return;    }
+			if(response == 'a') { continue;  }
 
-			switch (switc) {
+			switch (statusDisplay) {
+      
       case 0:
-				screenText += "\n\tSKIPPING VIDEO " + to_string(i) + "/" + to_string(vid.clips.size());
-				redrawScreen(screenText);
-				switc = 1;
+				screenText += "\n\tSKIPPING VIDEO " + 
+          to_string(i) + "/" + 
+          to_string(video.timestampURLs.size());				
+				statusDisplay = 1;
 				break;
 
 			case 1:
-				screenText += "\n\tPLAYING VIDEO " + to_string(i) + "/" + to_string(vid.clips.size());
-				redrawScreen(screenText);
-
-				newFile = "start chrome \"" + s + "\"";
-				system((const char*)newFile.c_str());
+				screenText += "\n\tPLAYING VIDEO " + 
+          to_string(i) + "/" + 
+          to_string(video.timestampURLs.size());
+				openURLsysCmd = "start chrome \"" + s + "\"";
+				system((const char*)openURLsysCmd.c_str());
 				break;
 
 			default:
 				screenText += "\n\tINVALID ENTRY!";
-				switc = 1;
+				statusDisplay = 1;
 				--i;
 				break;
 			}
+		  redrawScreen(screenText);
 			++i;
 		}
 	} return;
 }
-//////////////////////////////////////////////////////////////////////////////////
 
 string getFileContents(string fileName) {
 	
-  ifstream File;
+  ifstream inputStream;
 
-	File.open(fileName);
-	string   Lines = "";
+	inputStream.open(fileName);
+  string lines{""};
 
-	if (File.good()) {
-		while (File.good()) {
-			string TempLine;
-			getline(File, TempLine);
-			TempLine += "\n";
-			Lines += TempLine;
-		} return Lines;
+	if (inputStream.good()) {		
+    while (inputStream.good()) {			
+      string currentLine;
+			getline(inputStream, currentLine);
+			currentLine += "\n";
+			lines += currentLine;
+		} 
+    return lines;
 	}
-	else { return "File did not open\n"; }
+	else { 
+    return "File did not open\n"; 
+  }
 }
-//////////////////////////////////////////////////////////////////////////////////
 
 void redrawScreen() {
 	
   system("cls");
-	cout << getFileContents("title.txt");
+	printf("%s",getFileContents("title.txt"));
 	return;
 }
 
-void redrawScreen(string s) {
+void redrawScreen(string screenString) {
 	
   system("cls");
-	cout << getFileContents("title.txt");
-	int count = 0;
-	char e;
+	cout << getFileContents("title.txt");	
+	char currentChar;
 
-	if (s.size() > 40) {
-		stringstream is(s);
-		while (is) {
+	if (screenString.size() > 40) {
+		stringstream screenStringStream(screenString);
+		while (screenStringStream) {
 			cout << "\n\t";
 			for (int i = 0; i < 80; ++i) {
-				is.get(e);
+				screenStringStream.get(currentChar);
 
-				if (!is)
+				if (!screenStringStream)
 					return;
-				if (e == '\n') {
-					cout.put(e);
+				if (currentChar == '\n') {
+					cout.put(currentChar);
 					i = 0;
 					continue;
 				}
-				cout.put(e);
+				cout.put(currentChar);
 			}
 		}
 	}

@@ -20,8 +20,8 @@ struct Video
 	
 	unordered_map<string, short> wordCountMap;
 	map<string, bool>            commonWords;
-	vector<string>               lines;
-  set<string>                  clips;
+	vector<string>               captionLines;
+  set<string>                  timestampURLs;
 
   void import_iWords();
   void countWords();
@@ -55,7 +55,7 @@ void Video::countWords(){
   string currentWord;
 	import_iWords();
 	
-  for (auto& currentLine : lines) {		
+  for (auto& currentLine : captionLines) {		
     
     istringstream lineStream(currentLine);
 		
